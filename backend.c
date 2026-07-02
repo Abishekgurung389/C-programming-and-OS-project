@@ -5,6 +5,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/mman.h>
 
 #define SOCKET_PATH "/tmp/auth.sock"
 #define CORRECT_USER "abishek"
@@ -18,6 +19,14 @@ int validate(char *username, char *password) {
     return 0;
 }
 
+// Secure memory wipe - cannot be optimized away by compiler
+void secure_wipe(void *ptr, size_t len) {
+    volatile unsigned char *p = ptr;
+    while (len--) {
+        *p++ = 0;
+    }
+}
+
 int main() {
     char message[130];
     char username[64];
@@ -25,6 +34,10 @@ int main() {
 
     printf("[Backend] Starting with UID: %d\n", getuid());
     printf("[Backend] Effective UID: %d\n", geteuid());
+
+    // Lock memory so it never gets swapped to disk
+    mlock(message, sizeof(message));
+    mlock(password, sizeof(password));
 
     int server = socket(AF_UNIX, SOCK_STREAM, 0);
     struct sockaddr_un addr;
@@ -41,12 +54,19 @@ int main() {
     read(client, message, sizeof(message));
     printf("[Backend] Received credentials\n");
 
+    // Split username:password
     char *colon = strchr(message, ':');
     *colon = '\0';
     strcpy(username, message);
     strcpy(password, colon + 1);
 
+    // Validate
     int result = validate(username, password);
+
+    // Wipe sensitive data from memory immediately after use
+    secure_wipe(password, sizeof(password));
+    secure_wipe(message, sizeof(message));
+    printf("[Backend] Sensitive data wiped from memory\n");
 
     // Drop privileges permanently
     uid_t myuid = getuid();
