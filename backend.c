@@ -1,14 +1,12 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>
-<<<<<<< HEAD
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <sys/types.h>
 
 #define SOCKET_PATH "/tmp/auth.sock"
-=======
-
->>>>>>> 117339f7a579d18161a069a3255b65101af49415
 #define CORRECT_USER "abishek"
 #define CORRECT_PASS "1234"
 
@@ -21,10 +19,12 @@ int validate(char *username, char *password) {
 }
 
 int main() {
-<<<<<<< HEAD
     char message[130];
     char username[64];
     char password[64];
+
+    printf("[Backend] Starting with UID: %d\n", getuid());
+    printf("[Backend] Effective UID: %d\n", geteuid());
 
     int server = socket(AF_UNIX, SOCK_STREAM, 0);
     struct sockaddr_un addr;
@@ -46,7 +46,16 @@ int main() {
     strcpy(username, message);
     strcpy(password, colon + 1);
 
-    if (validate(username, password)) {
+    int result = validate(username, password);
+
+    // Drop privileges permanently
+    uid_t myuid = getuid();
+    setresuid(myuid, myuid, myuid);
+
+    printf("[Backend] After drop - UID: %d\n", getuid());
+    printf("[Backend] After drop - Effective UID: %d\n", geteuid());
+
+    if (result) {
         write(client, "ACCESS GRANTED", 14);
         printf("[Backend] Result: ACCESS GRANTED\n");
     } else {
@@ -57,24 +66,5 @@ int main() {
     close(client);
     close(server);
     unlink(SOCKET_PATH);
-=======
-    char username[64];
-    char password[64];
-
-    printf("[Backend] Enter username to validate: ");
-    fgets(username, sizeof(username), stdin);
-    username[strcspn(username, "\n")] = 0;
-
-    printf("[Backend] Enter password to validate: ");
-    fgets(password, sizeof(password), stdin);
-    password[strcspn(password, "\n")] = 0;
-
-    if (validate(username, password)) {
-        printf("[Backend] Result: ACCESS GRANTED\n");
-    } else {
-        printf("[Backend] Result: ACCESS DENIED\n");
-    }
-
->>>>>>> 117339f7a579d18161a069a3255b65101af49415
     return 0;
 }
