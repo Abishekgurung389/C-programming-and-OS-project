@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/mman.h>
+#include <stdlib.h>
 
 #define SOCKET_PATH "/tmp/auth.sock"
 #define CORRECT_USER "abishek"
@@ -19,12 +20,46 @@ int validate(char *username, char *password) {
     return 0;
 }
 
-// Secure memory wipe - cannot be optimized away by compiler
+// Secure memory wipe
 void secure_wipe(void *ptr, size_t len) {
     volatile unsigned char *p = ptr;
     while (len--) {
         *p++ = 0;
     }
+}
+
+// Attack resistance - check if message is valid
+int is_valid_request(char *message) {
+    // Must contain exactly one colon
+    int colon_count = 0;
+    for (int i = 0; message[i] != '\0'; i++) {
+        if (message[i] == ':') colon_count++;
+    }
+    if (colon_count != 1) {
+        printf("[Backend] ATTACK DETECTED: malformed request rejected!\n");
+        return 0;
+    }
+    // Must not be empty
+    if (strlen(message) < 3) {
+        printf("[Backend] ATTACK DETECTED: request too short!\n");
+        return 0;
+    }
+    return 1;
+}
+
+// Runtime check using /proc/self/status
+void check_privileges_proc() {
+    FILE *f = fopen("/proc/self/status", "r");
+    if (!f) return;
+
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, "Uid:", 4) == 0 ||
+            strncmp(line, "Gid:", 4) == 0) {
+            printf("[Backend] /proc check - %s", line);
+        }
+    }
+    fclose(f);
 }
 
 int main() {
@@ -35,7 +70,7 @@ int main() {
     printf("[Backend] Starting with UID: %d\n", getuid());
     printf("[Backend] Effective UID: %d\n", geteuid());
 
-    // Lock memory so it never gets swapped to disk
+    // Lock memory
     mlock(message, sizeof(message));
     mlock(password, sizeof(password));
 
@@ -51,8 +86,19 @@ int main() {
     printf("[Backend] Waiting for frontend to connect...\n");
 
     int client = accept(server, NULL, NULL);
-    read(client, message, sizeof(message));
+    
+    memset(message, 0, sizeof(message));
+    read(client, message, sizeof(message) - 1);
     printf("[Backend] Received credentials\n");
+
+    // Attack resistance check
+    if (!is_valid_request(message)) {
+        write(client, "ACCESS DENIED", 13);
+        close(client);
+        close(server);
+        unlink(SOCKET_PATH);
+        return 1;
+    }
 
     // Split username:password
     char *colon = strchr(message, ':');
@@ -63,7 +109,7 @@ int main() {
     // Validate
     int result = validate(username, password);
 
-    // Wipe sensitive data from memory immediately after use
+    // Wipe sensitive data immediately
     secure_wipe(password, sizeof(password));
     secure_wipe(message, sizeof(message));
     printf("[Backend] Sensitive data wiped from memory\n");
@@ -72,8 +118,9 @@ int main() {
     uid_t myuid = getuid();
     setresuid(myuid, myuid, myuid);
 
-    printf("[Backend] After drop - UID: %d\n", getuid());
-    printf("[Backend] After drop - Effective UID: %d\n", geteuid());
+    // Verify via /proc
+    printf("[Backend] Verifying privilege drop via /proc:\n");
+    check_privileges_proc();
 
     if (result) {
         write(client, "ACCESS GRANTED", 14);
