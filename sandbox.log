@@ -59,3 +59,16 @@
 [SANDBOX LOG Tue Jul 14 05:42:39 2026] TIME LIMIT EXCEEDED - Killing child process!
 [SANDBOX LOG Tue Jul 14 05:42:39 2026] RESULT: Child was forcefully terminated by sandbox
 [SANDBOX LOG Tue Jul 14 05:42:40 2026] Sandbox finished
+[SANDBOX LOG Tue Jul 14 05:44:36 2026] Sandbox started
+[SANDBOX LOG Tue Jul 14 05:44:36 2026] Memory limit set for child
+[SANDBOX LOG Tue Jul 14 05:44:36 2026] Time monitor thread started
+[SANDBOX LOG Tue Jul 14 05:44:36 2026] CPU monitor thread started
+[SANDBOX LOG Tue Jul 14 05:44:36 2026] Memory monitor thread started
+[SANDBOX LOG Tue Jul 14 05:44:36 2026] Memory usage: 152 KB
+[SANDBOX LOG Tue Jul 14 05:44:37 2026] Child running for 1 seconds
+[SANDBOX LOG Tue Jul 14 05:44:37 2026] Memory usage: 1588 KB
+[SANDBOX LOG Tue Jul 14 05:44:37 2026] CPU ticks: 0
+[SANDBOX LOG Tue Jul 14 05:44:38 2026] Child running for 2 seconds
+[SANDBOX LOG Tue Jul 14 05:44:38 2026] Child already finished
+[SANDBOX LOG Tue Jul 14 05:44:38 2026] RESULT: Child finished normally with exit code 0
+[SANDBOX LOG Tue Jul 14 05:44:38 2026] Sandbox finished
